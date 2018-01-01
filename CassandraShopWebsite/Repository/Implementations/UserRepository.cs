@@ -50,6 +50,31 @@ namespace CassandraShopWebsite.Repository.Implementations
             //return mapper.FirstOrDefault<User>("select * from user where id = ?", Guid.Parse(id));
         }
 
+        public User FindBy(string username)
+        {
+            var mapper = new Mapper(_session);
+            var userQuery = _session.Execute("select * from user where username = " + username);
+            var searchUser = new User();
+            foreach (var row in userQuery)
+            {
+                var user = new User
+                {
+                    Id = row.GetValue<Guid>("id"),
+                    FullName = row.GetValue<string>("fullname"),
+                    UserName = row.GetValue<string>("username"),
+                    Password = row.GetValue<string>("password"),
+                };
+                if (row.GetValue<LocalDate>("birthday") != null)
+                {
+                    user.Birthday = row.GetValue<LocalDate>("birthday");
+                    user.BirthdayTemp = new DateTime(user.Birthday.Year, user.Birthday.Month, user.Birthday.Day);
+                }
+                searchUser = user;
+            }
+            return searchUser;
+            //return mapper.FirstOrDefault<User>("select * from user where id = ?", Guid.Parse(id));
+        }
+
         public List<User> GetAll()
         {
             var mapper = new Mapper(_session);

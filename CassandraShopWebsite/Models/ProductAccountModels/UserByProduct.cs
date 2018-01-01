@@ -14,6 +14,7 @@ namespace CassandraShopWebsite.Models.ProductAccountModels
         }
         public Guid Id { get; set; }
         public string Product_Id { get; set; }
+        public string Product_Name { get; set; }
         public List<string> User_Names { get; set; }
 
     }

@@ -10,6 +10,7 @@ namespace CassandraShopWebsite.Repository.Contracts
     {
         void Add(User newUser);
         User Find(string id);
+        User FindBy(string username);
         User Remove(string id);
         void Update(User newUser);
         List<User> GetAll();
