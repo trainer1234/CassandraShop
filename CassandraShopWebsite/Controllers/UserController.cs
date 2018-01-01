@@ -1,4 +1,5 @@
-﻿using CassandraShopWebsite.Models.ProductModels;
+﻿using Cassandra;
+using CassandraShopWebsite.Models.AccountModels;
 using CassandraShopWebsite.Repository.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using System;
@@ -8,20 +9,21 @@ using System.Threading.Tasks;
 
 namespace CassandraShopWebsite.Controllers
 {
-    public class ProductController : Controller
+    public class UserController : Controller
     {
-        private IProductRepository _productRepository;
+        private IUserRepository _userRepository;
 
-        public ProductController(IProductRepository productRepository)
+        public UserController(IUserRepository userRepository)
         {
-            _productRepository = productRepository;
+            _userRepository = userRepository;
         }
 
         public IActionResult Index(string sortOrder, string currentFilter, string searchString, int? page)
         {
             ViewData["CurrentSort"] = sortOrder;
-            ViewData["NameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "name_desc" : "";
-            ViewData["YearSortParm"] = sortOrder == "Year" ? "year_desc" : "Year";
+            ViewData["UserNameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "username_desc" : "";
+            ViewData["FullNameSortParm"] = String.IsNullOrEmpty(sortOrder) ? "fullname_desc" : "fullname";
+            ViewData["DateSortParm"] = sortOrder == "Date" ? "date_desc" : "Date";
             if (searchString != null)
             {
                 page = 1;
@@ -32,33 +34,38 @@ namespace CassandraShopWebsite.Controllers
             }
             ViewData["CurrentFilter"] = searchString;
 
-            var products = _productRepository.GetAll();
+            var users = _userRepository.GetAll();
             if (!String.IsNullOrEmpty(searchString))
             {
-                products = products.Where(product => (product.Name.Contains(searchString)
-                                            || product.Manufacture_Name.Contains(searchString)
-                                            || product.Description.Contains(searchString))).ToList();
+                users = users.Where(user => (user.UserName.Contains(searchString)
+                                            || user.FullName.Contains(searchString))).ToList();
             }
             switch (sortOrder)
             {
-                case "name_desc":
-                    products = products.OrderByDescending(s => s.Name).ToList();
+                case "username_desc":
+                    users = users.OrderByDescending(s => s.UserName).ToList();
                     break;
-                case "year":
-                    products = products.OrderBy(s => s.Manufacture_Year).ToList();
+                case "Date":
+                    users = users.OrderBy(s => s.Birthday).ToList();
                     break;
-                case "year_desc":
-                    products = products.OrderByDescending(s => s.Manufacture_Year).ToList();
+                case "date_desc":
+                    users = users.OrderByDescending(s => s.Birthday).ToList();
+                    break;
+                case "fullname_desc":
+                    users = users.OrderByDescending(s => s.FullName).ToList();
+                    break;
+                case "fullname":
+                    users = users.OrderBy(s => s.FullName).ToList();
                     break;
                 default:
-                    products = products.OrderBy(s => s.Name).ToList();
+                    users = users.OrderBy(s => s.UserName).ToList();
                     break;
             }
             int pageSize = 3;
-            return View(PaginatedList<Product>.Created(products, page ?? 1, pageSize));
+            return View(PaginatedList<User>.Created(users, page ?? 1, pageSize));
         }
 
-        // GET: Product/Details/5
+        // GET: User/Details/5
         public IActionResult Details(string id)
         {
             if (id == null)
@@ -66,32 +73,32 @@ namespace CassandraShopWebsite.Controllers
                 return NotFound();
             }
 
-            var student = _productRepository.Find(id);
+            var user = _userRepository.Find(id);
 
-            if (student == null)
+            if (user == null)
             {
                 return NotFound();
             }
 
-            return View(student);
+            return View(user);
         }
 
-        // GET: Product/Create
+        // GET: User/Create
         public IActionResult Create()
         {
             return View();
         }
 
-        // POST: Students/Create
+        // POST: User/Create
         [HttpPost]
-        public IActionResult Create([Bind("Name,Manufacture_Name,Manufacture_Year,Price,Description")] Product product)
+        public IActionResult Create([Bind("UserName,FullName,BirthdayTemp,Password")] User user)
         {
-
             try
             {
                 if (ModelState.IsValid)
                 {
-                    _productRepository.Add(product);
+                    user.Birthday = LocalDate.Parse(user.BirthdayTemp.ToString("yyyy-MM-dd"));
+                    _userRepository.Add(user);
                     return RedirectToAction("Index");
                 }
             }
@@ -102,10 +109,10 @@ namespace CassandraShopWebsite.Controllers
                     "Try again, and if the problem persists " +
                     "see your system aministrator.");
             }
-            return View(product);
+            return View(user);
         }
 
-        // GET: Product/Edit/5
+        // GET: User/Edit/5
         public IActionResult Edit(string id)
         {
             if (id == null)
@@ -113,20 +120,20 @@ namespace CassandraShopWebsite.Controllers
                 return NotFound();
             }
 
-            var product = _productRepository.Find(id);
-            if (product == null)
+            var user = _userRepository.Find(id);
+            if (user == null)
             {
                 return NotFound();
             }
-            return View(product);
+            return View(user);
         }
 
         [HttpPost, ActionName("Edit")]
         // Create and attach
         // You can use this approach when the web page UI includes all of the fields in the entity and can update any of them.
-        public IActionResult Edit(string id, [Bind("Id,Name,Manufacture_Name,Manufacture_Year,Price,Description")] Product product)
+        public IActionResult Edit(string id, [Bind("Id,UserName,FullName,BirthdayTemp,Password")] User user)
         {
-            if (Guid.Parse(id) != product.Id)
+            if (Guid.Parse(id) != user.Id)
             {
                 return NotFound();
             }
@@ -134,7 +141,8 @@ namespace CassandraShopWebsite.Controllers
             {
                 try
                 {
-                    _productRepository.Update(product);
+                    user.Birthday = LocalDate.Parse(user.BirthdayTemp.ToString("yyyy-MM-dd"));
+                    _userRepository.Update(user);
                     return RedirectToAction("Index");
                 }
                 catch (Exception ex)
@@ -145,7 +153,7 @@ namespace CassandraShopWebsite.Controllers
                         "see your system administrator.");
                 }
             }
-            return View(product);
+            return View(user);
         }
 
         public IActionResult Delete(string id, bool? saveChangeError = false)
@@ -155,8 +163,8 @@ namespace CassandraShopWebsite.Controllers
                 return NotFound();
             }
 
-            var product = _productRepository.Find(id);
-            if (product == null)
+            var user = _userRepository.Find(id);
+            if (user == null)
             {
                 return NotFound();
             }
@@ -167,22 +175,22 @@ namespace CassandraShopWebsite.Controllers
                                             "see your system administrator.";
             }
 
-            return View(product);
+            return View(user);
         }
 
         // POST: Product/Delete/5
         [HttpPost, ActionName("Delete")]
         public IActionResult DeleteConfirmed(string id)
         {
-            var product = _productRepository.Find(id);
-            if (product == null)
+            var user = _userRepository.Find(id);
+            if (user == null)
             {
                 return RedirectToAction("Index");
             }
 
             try
             {
-                _productRepository.Remove(id);
+                _userRepository.Remove(id);
                 return RedirectToAction("Index");
             }
             catch (Exception ex)
